@@ -3,6 +3,7 @@
 // Written in TypeScript
 
 /// <reference path="pixi.js.d.ts"/>
+/// <reference path="howler.d.ts"/>
 /// <reference path="load.ts"/>
 /// <reference path="helper.ts"/>
 
@@ -45,12 +46,16 @@ let alertTextLifetime = 0;
 // keys indicators
 let leftKey, rightKey: boolean;
 
+// game indicators
+let barMoving: boolean;
+
 // game config
 const barSpeed = 800;
 const ballInitSpeed = 250;
 const ballBarSpeedMod = 200;
 const alertTextDuration = 2;
 const alertTextFadeDuration = 1;
+
 
 function setup() {
 	// containers
@@ -65,12 +70,7 @@ function setup() {
 
 	// initial positions
 	gameArea.x = gameArea.y = 10;
-	bar.x = (gameArea.width - bar.width) / 2;
-	bar.y = 650;
-	ball.x = bar.x + (bar.width + ball.width) / 2;
-	ball.y = bar.y - ball.height;
-	ball.vx = (Math.random() < 0.5 ? 1 : -1) * ballInitSpeed;
-	ball.vy = -ballInitSpeed;
+	resetBall();
 
 	// create view tree
 	stage.addChild(bg);
@@ -105,16 +105,24 @@ function gameLoop(timestamp: number) {
 	if (deltatime > 1 / 60.0) deltatime = 1 / 60.0;
 	prevTimestamp = timestamp;
 
-	// set bar speed
-	if (leftKey) bar.vx -= barSpeed;
-	if (rightKey) bar.vx += barSpeed;
-	if (leftKey == rightKey) bar.vx = 0;
-
 	// move player bar
-	if (leftKey) bar.x -= barSpeed * deltatime;
-	if (rightKey) bar.x += barSpeed * deltatime;
-	if (bar.x < 0) bar.x = 0;
-	if (bar.x > (gameArea.width - bar.width)) bar.x = gameArea.width - bar.width;
+	barMoving = false;
+	if (leftKey) {
+		bar.x -= barSpeed * deltatime;
+		barMoving = true;
+	}
+	if (rightKey) {
+		bar.x += barSpeed * deltatime;
+		barMoving = true;
+	}
+	if (bar.x < 0) {
+		bar.x = 0;
+		barMoving = false;
+	}
+	if (bar.x > (gameArea.width - bar.width)) {
+		bar.x = gameArea.width - bar.width;
+		barMoving = false;
+	}
 
 	// move ball
 	let oldBallX = ball.x;
@@ -126,22 +134,26 @@ function gameLoop(timestamp: number) {
 	let hitResult: HitResult;
 	// ball-gameArea collision
 	if (ball.x < 0 || ball.x > (gameArea.width - ball.width)) hitResult = HitResult.horizontal;
-	if (ball.y < 0 || ball.y > (gameArea.height - ball.height)) hitResult = HitResult.vertical;
+	if (ball.y < 0) hitResult = HitResult.vertical;
 	// ball-bar collision
-	let barBallHitResult = hitTest(ball, bar, -3);
+	let barBallHitResult = hitTest(ball, bar);
 	if (barBallHitResult != HitResult.none) {
 		hitResult = barBallHitResult;
+		playSound(SoundType.barHit);
 		// modify ball speed according to bar movement
-		let speedModifier = ballBarSpeedMod * (0.25 * Math.random() + 0.25);
-		if (bar.vx > 0) ball.vx += ballBarSpeedMod;
-		else ball.vx -= ballBarSpeedMod;
+		if (barMoving) {
+			let speedModifier = ballBarSpeedMod * (0.25 * Math.random() + 0.25);
+			if (rightKey) ball.vx += ballBarSpeedMod;
+			else ball.vx -= ballBarSpeedMod;
+		}
 	}
 	// ball-brick collision
 	for (let brick of bricks) {
-		let brickBallHitResult = hitTest(ball, brick);
+		let brickBallHitResult = hitTest(ball, brick, -3);
 		if (brickBallHitResult != HitResult.none) {
 			hitResult = brickBallHitResult;
 			brick.visible = false;
+			playSound(SoundType.brickHit);
 		}
 	}
 	// handle collision
@@ -162,6 +174,12 @@ function gameLoop(timestamp: number) {
 			alertText.alpha = alertTextLifetime / alertTextFadeDuration;
 		}
 		alertTextLifetime -= deltatime;
+	}
+
+	// game lost handling
+	if (ball.y > gameArea.height) {
+		resetBall();
+		setAlertText(gameLostMsg[Math.floor(Math.random() * gameLostMsg.length)]);
 	}
 
 	renderer.render(stage);
@@ -198,4 +216,13 @@ function setAlertText(text: string) {
 	alertText.y = 30;
 	alertTextLifetime = alertTextDuration + alertTextFadeDuration;
 	stage.addChild(alertText);
+}
+
+function resetBall() {
+	bar.x = (gameArea.width - bar.width) / 2;
+	bar.y = 650;
+	ball.x = bar.x + (bar.width + ball.width) / 2;
+	ball.y = bar.y - ball.height;
+	ball.vx = (Math.random() < 0.5 ? 1 : -1) * ballInitSpeed;
+	ball.vy = -ballInitSpeed;
 }

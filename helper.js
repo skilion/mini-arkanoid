@@ -1,4 +1,6 @@
 /// <reference path="pixi.js.d.ts"/>
+/// <reference path="howler.d.ts"/>
+/// <reference path="load.ts"/>
 var HitResult;
 (function (HitResult) {
     HitResult[HitResult["none"] = 0] = "none";
@@ -33,4 +35,22 @@ function hitTest(a, b, margin) {
         }
     }
     return HitResult.none;
+}
+var SoundType;
+(function (SoundType) {
+    SoundType[SoundType["brickHit"] = 0] = "brickHit";
+    SoundType[SoundType["barHit"] = 1] = "barHit";
+})(SoundType || (SoundType = {}));
+function playSound(soundType) {
+    switch (soundType) {
+        case SoundType.barHit:
+            sounds[randInt(SoundAssets.barHit1, SoundAssets.barHit2 + 1)].play();
+            break;
+        case SoundType.brickHit:
+            sounds[randInt(SoundAssets.hit1, SoundAssets.hit4 + 1)].play();
+            break;
+    }
+}
+function randInt(min, max) {
+    return Math.floor(Math.random() * (max - min)) + min;
 }

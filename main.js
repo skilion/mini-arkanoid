@@ -2,6 +2,7 @@
 // Demo to test PixiJS
 // Written in TypeScript
 /// <reference path="pixi.js.d.ts"/>
+/// <reference path="howler.d.ts"/>
 /// <reference path="load.ts"/>
 /// <reference path="helper.ts"/>
 var screenWidth = 1280;
@@ -35,6 +36,8 @@ var alertText;
 var alertTextLifetime = 0;
 // keys indicators
 var leftKey, rightKey;
+// game indicators
+var barMoving;
 // game config
 var barSpeed = 800;
 var ballInitSpeed = 250;
@@ -52,12 +55,7 @@ function setup() {
     gameArea = new PIXI.Sprite(TextureCache[assets[Assets.gameArea]]);
     // initial positions
     gameArea.x = gameArea.y = 10;
-    bar.x = (gameArea.width - bar.width) / 2;
-    bar.y = 650;
-    ball.x = bar.x + (bar.width + ball.width) / 2;
-    ball.y = bar.y - ball.height;
-    ball.vx = (Math.random() < 0.5 ? 1 : -1) * ballInitSpeed;
-    ball.vy = -ballInitSpeed;
+    resetBall();
     // create view tree
     stage.addChild(bg);
     stage.addChild(gameArea);
@@ -91,22 +89,24 @@ function gameLoop(timestamp) {
     if (deltatime > 1 / 60.0)
         deltatime = 1 / 60.0;
     prevTimestamp = timestamp;
-    // set bar speed
-    if (leftKey)
-        bar.vx -= barSpeed;
-    if (rightKey)
-        bar.vx += barSpeed;
-    if (leftKey == rightKey)
-        bar.vx = 0;
     // move player bar
-    if (leftKey)
+    barMoving = false;
+    if (leftKey) {
         bar.x -= barSpeed * deltatime;
-    if (rightKey)
+        barMoving = true;
+    }
+    if (rightKey) {
         bar.x += barSpeed * deltatime;
-    if (bar.x < 0)
+        barMoving = true;
+    }
+    if (bar.x < 0) {
         bar.x = 0;
-    if (bar.x > (gameArea.width - bar.width))
+        barMoving = false;
+    }
+    if (bar.x > (gameArea.width - bar.width)) {
         bar.x = gameArea.width - bar.width;
+        barMoving = false;
+    }
     // move ball
     var oldBallX = ball.x;
     var oldBallY = ball.y;
@@ -117,26 +117,30 @@ function gameLoop(timestamp) {
     // ball-gameArea collision
     if (ball.x < 0 || ball.x > (gameArea.width - ball.width))
         hitResult = HitResult.horizontal;
-    if (ball.y < 0 || ball.y > (gameArea.height - ball.height))
+    if (ball.y < 0)
         hitResult = HitResult.vertical;
     // ball-bar collision
-    var barBallHitResult = hitTest(ball, bar, -3);
+    var barBallHitResult = hitTest(ball, bar);
     if (barBallHitResult != HitResult.none) {
         hitResult = barBallHitResult;
+        playSound(SoundType.barHit);
         // modify ball speed according to bar movement
-        var speedModifier = ballBarSpeedMod * (0.25 * Math.random() + 0.25);
-        if (bar.vx > 0)
-            ball.vx += ballBarSpeedMod;
-        else
-            ball.vx -= ballBarSpeedMod;
+        if (barMoving) {
+            var speedModifier = ballBarSpeedMod * (0.25 * Math.random() + 0.25);
+            if (rightKey)
+                ball.vx += ballBarSpeedMod;
+            else
+                ball.vx -= ballBarSpeedMod;
+        }
     }
     // ball-brick collision
     for (var _i = 0, bricks_1 = bricks; _i < bricks_1.length; _i++) {
         var brick = bricks_1[_i];
-        var brickBallHitResult = hitTest(ball, brick);
+        var brickBallHitResult = hitTest(ball, brick, -3);
         if (brickBallHitResult != HitResult.none) {
             hitResult = brickBallHitResult;
             brick.visible = false;
+            playSound(SoundType.brickHit);
         }
     }
     // handle collision
@@ -156,6 +160,11 @@ function gameLoop(timestamp) {
             alertText.alpha = alertTextLifetime / alertTextFadeDuration;
         }
         alertTextLifetime -= deltatime;
+    }
+    // game lost handling
+    if (ball.y > gameArea.height) {
+        resetBall();
+        setAlertText(gameLostMsg[Math.floor(Math.random() * gameLostMsg.length)]);
     }
     renderer.render(stage);
     requestAnimationFrame(gameLoop);
@@ -189,4 +198,12 @@ function setAlertText(text) {
     alertText.y = 30;
     alertTextLifetime = alertTextDuration + alertTextFadeDuration;
     stage.addChild(alertText);
+}
+function resetBall() {
+    bar.x = (gameArea.width - bar.width) / 2;
+    bar.y = 650;
+    ball.x = bar.x + (bar.width + ball.width) / 2;
+    ball.y = bar.y - ball.height;
+    ball.vx = (Math.random() < 0.5 ? 1 : -1) * ballInitSpeed;
+    ball.vy = -ballInitSpeed;
 }

@@ -1,4 +1,6 @@
 /// <reference path="pixi.js.d.ts"/>
+/// <reference path="howler.d.ts"/>
+/// <reference path="load.ts"/>
 
 enum HitResult {
     none,
@@ -35,4 +37,24 @@ function hitTest(a: PIXI.Sprite, b: PIXI.Sprite, margin = 0): HitResult {
     }
 
     return HitResult.none;
+}
+
+enum SoundType {
+    brickHit,
+    barHit
+}
+
+function playSound(soundType: SoundType) {
+    switch (soundType) {
+    case SoundType.barHit:
+        sounds[randInt(SoundAssets.barHit1, SoundAssets.barHit2 + 1)].play();
+        break;
+    case SoundType.brickHit:
+        sounds[randInt(SoundAssets.hit1, SoundAssets.hit4 + 1)].play();
+        break;
+    }
+}
+
+function randInt(min: number, max: number) {
+    return Math.floor(Math.random() * (max - min)) + min;
 }
