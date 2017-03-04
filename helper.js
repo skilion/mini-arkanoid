@@ -5,7 +5,9 @@ var HitResult;
     HitResult[HitResult["vertical"] = 1] = "vertical";
     HitResult[HitResult["horizontal"] = 2] = "horizontal";
 })(HitResult || (HitResult = {}));
-function hitTest(a, b) {
+// margin = nubmer of pixels to not take in consideration
+function hitTest(a, b, margin) {
+    if (margin === void 0) { margin = 0; }
     if (a.visible == false || b.visible == false)
         return HitResult.none;
     var axMax = a.x + a.width;
@@ -20,9 +22,9 @@ function hitTest(a, b) {
     var xd2 = axMin - bxMax;
     var yd1 = byMin - ayMax;
     var yd2 = ayMin - byMax;
-    if (xd1 < 0 && xd2 < 0) {
+    if (xd1 < 0 && xd2 < margin) {
         var xd = Math.max(xd1, xd2);
-        if (yd1 < 0 && yd2 < 0) {
+        if (yd1 < 0 && yd2 < margin) {
             var yd = Math.max(yd1, yd2);
             if (xd > yd)
                 return HitResult.horizontal;

@@ -23,6 +23,25 @@ let stage, bricksArea: PIXI.Container;
 let ball, bar, bg, gameArea: PIXI.Sprite;
 let bricks: PIXI.Sprite[] = [];
 
+// text messages
+let textAlertStyle = new PIXI.TextStyle({
+		align: "center",
+		fontFamily: "Arial",
+		fontSize: 40,
+		fontStyle: 'italic',
+		fontWeight: 'bold',
+		fill: ['#F21111', '#F2A90A'], // gradient
+		stroke: '#4a1850',
+		strokeThickness: 0,
+		dropShadow: true,
+		dropShadowColor: "#000000",
+		dropShadowBlur: 4,
+		dropShadowAngle: Math.PI / 6,
+		dropShadowDistance: 6
+	});
+let alertText: PIXI.Text;
+let alertTextLifetime = 0;
+
 // keys indicators
 let leftKey, rightKey: boolean;
 
@@ -30,6 +49,8 @@ let leftKey, rightKey: boolean;
 const barSpeed = 800;
 const ballInitSpeed = 250;
 const ballBarSpeedMod = 200;
+const alertTextDuration = 2;
+const alertTextFadeDuration = 1;
 
 function setup() {
 	// containers
@@ -70,6 +91,8 @@ function setup() {
 		if (event.key == "ArrowRight") rightKey = false;
 	}, false);
 
+	setAlertText("Hello World");
+
 	// Start the game loop
 	requestAnimationFrame(gameLoop);
 }
@@ -105,7 +128,7 @@ function gameLoop(timestamp: number) {
 	if (ball.x < 0 || ball.x > (gameArea.width - ball.width)) hitResult = HitResult.horizontal;
 	if (ball.y < 0 || ball.y > (gameArea.height - ball.height)) hitResult = HitResult.vertical;
 	// ball-bar collision
-	let barBallHitResult = hitTest(ball, bar);
+	let barBallHitResult = hitTest(ball, bar, -3);
 	if (barBallHitResult != HitResult.none) {
 		hitResult = barBallHitResult;
 		// modify ball speed according to bar movement
@@ -133,6 +156,14 @@ function gameLoop(timestamp: number) {
 		break;
 	}
 
+	// alert text
+	if (alertTextLifetime > 0) {
+		if (alertTextLifetime <= alertTextFadeDuration) {
+			alertText.alpha = alertTextLifetime / alertTextFadeDuration;
+		}
+		alertTextLifetime -= deltatime;
+	}
+
 	renderer.render(stage);
 	requestAnimationFrame(gameLoop);
 }
@@ -154,4 +185,17 @@ function loadLevel(level: number[]) {
 			bricks.push(brick);
 		}
 	}
+}
+
+function setAlertText(text: string) {
+	if (alertText) {
+		stage.removeChild(alertText);
+		alertText.destroy();
+	}
+	alertText = new PIXI.Text(text, textAlertStyle);
+	alertText.anchor.x = 0.5;
+	alertText.x = 640;
+	alertText.y = 30;
+	alertTextLifetime = alertTextDuration + alertTextFadeDuration;
+	stage.addChild(alertText);
 }
