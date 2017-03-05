@@ -21,8 +21,9 @@ loadAssets(setup);
 let stage, bricksArea: PIXI.Container;
 
 // sprites
-let ball, bar, bg, gameArea: PIXI.Sprite;
+let bar, bg, gameArea: PIXI.Sprite;
 let bricks: PIXI.Sprite[] = [];
+let ball: PIXI.Graphics; // the ball is a Graphic obj so the color can be changed dinamically
 
 // text messages
 let textAlertStyle = new PIXI.TextStyle({
@@ -49,6 +50,7 @@ let leftKey, rightKey: boolean;
 // game indicators
 let ready: boolean;
 let barMoving: boolean;
+let ballReactionTime: number; // time for which the ball change color and wobble
 
 // game config
 const barSpeed = 800;
@@ -57,6 +59,7 @@ const ballSpeedAcceleration = 10;
 const ballBarSpeedMod = 200;
 const alertTextDuration = 2;
 const alertTextFadeDuration = 1;
+const ballReactionTimeDuration = 0.5;
 
 
 function setup() {
@@ -65,10 +68,16 @@ function setup() {
 	bricksArea = new PIXI.Container();
 
 	// sprites
-	ball = new PIXI.Sprite(TextureCache[assets[Assets.ball]]);
 	bar = new PIXI.Sprite(TextureCache[assets[Assets.bar]]);
 	bg = new PIXI.Sprite(TextureCache[assets[Assets.bg]]);
 	gameArea = new PIXI.Sprite(TextureCache[assets[Assets.gameArea]]);
+
+	// create the ball (a white rectangle)
+	ball = new PIXI.Graphics();
+	ball.beginFill(0xFFFFFF);
+	ball.drawRect(0, 0, 25, 25);
+	ball.endFill();
+	ball.tint = 0xFF3300;
 
 	// initial positions
 	gameArea.x = gameArea.y = 10;
@@ -141,7 +150,7 @@ function gameLoop(timestamp: number) {
 	ball.y += ball.vy * deltatime;
 
 	// ball collision handling
-	let hitResult: HitResult;
+	let hitResult = HitResult.none;
 	// ball-gameArea collision
 	if (ball.x < 0 || ball.x > (gameArea.width - ball.width)) hitResult = HitResult.horizontal;
 	if (ball.y < 0) hitResult = HitResult.vertical;
@@ -167,15 +176,19 @@ function gameLoop(timestamp: number) {
 		}
 	}
 	// handle collision
-	switch (hitResult) {
-	case HitResult.horizontal:
-		ball.x = oldBallX;
-		ball.vx = -ball.vx;
-		break;
-	case HitResult.vertical:
-		ball.y = oldBallY;
-		ball.vy = -ball.vy;
-		break;
+	if (hitResult != HitResult.none)  {
+		ballHitEffect();
+		// handle collision
+		switch (hitResult) {
+		case HitResult.horizontal:
+			ball.x = oldBallX;
+			ball.vx = -ball.vx;
+			break;
+		case HitResult.vertical:
+			ball.y = oldBallY;
+			ball.vy = -ball.vy;
+			break;
+		}
 	}
 
 	// increase ball speed
@@ -194,6 +207,8 @@ function gameLoop(timestamp: number) {
 		resetBall();
 		setAlertText(gameLostMsg[Math.floor(Math.random() * gameLostMsg.length)]);
 	}
+
+	updateBallAspect(deltatime);
 
 	renderer.render(stage);
 	requestAnimationFrame(gameLoop);
@@ -239,4 +254,17 @@ function resetBall() {
 	ball.y = bar.y - ball.height;
 	ball.vx = (Math.random() < 0.5 ? 1 : -1) * ballInitSpeed;
 	ball.vy = -ballInitSpeed;
+	ballReactionTime = 0;
+}
+
+function updateBallAspect(deltatime: number) {
+	let effect = 1 - (Math.cos(ballReactionTime * Math.PI * 8) * 0.5 + 0.5);
+	let g = 0x33 + effect * (0xFF - 0x33);
+	let b = effect * 0xFF;
+	ball.tint = 0xFF0000 | (g << 16) | b;
+	if (ballReactionTime > 0) ballReactionTime -= deltatime;
+}
+
+function ballHitEffect() {
+	ballReactionTime = ballReactionTimeDuration;
 }
