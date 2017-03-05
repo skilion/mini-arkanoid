@@ -14,7 +14,7 @@ loadAssets(setup);
 // stages
 var stage, bricksArea;
 // sprites
-var ball, bar, bg, gameArea;
+var ball, trace, bar, bg, gameArea;
 var bricks = [];
 // text messages
 var textAlertStyle = new PIXI.TextStyle({
@@ -46,12 +46,16 @@ var ballSpeedAcceleration = 10;
 var ballBarSpeedMod = 200;
 var alertTextDuration = 2;
 var alertTextFadeDuration = 1;
+//position of the trace
+var olderBallX;
+var olderBallY;
 function setup() {
     // containers
     stage = new PIXI.Container();
     bricksArea = new PIXI.Container();
     // sprites
     ball = new PIXI.Sprite(TextureCache[assets[Assets.ball]]);
+    trace = new PIXI.Sprite(TextureCache[assets[Assets.ball]]);
     bar = new PIXI.Sprite(TextureCache[assets[Assets.bar]]);
     bg = new PIXI.Sprite(TextureCache[assets[Assets.bg]]);
     gameArea = new PIXI.Sprite(TextureCache[assets[Assets.gameArea]]);
@@ -64,6 +68,7 @@ function setup() {
     gameArea.addChild(bricksArea);
     gameArea.addChild(bar);
     gameArea.addChild(ball);
+    gameArea.addChild(trace);
     loadLevel(level1);
     //Capture the keyboard arrow keys
     window.addEventListener("keydown", function (event) {
@@ -93,6 +98,8 @@ function gameLoop(timestamp) {
     if (deltatime > 1 / 60.0)
         deltatime = 1 / 60.0;
     prevTimestamp = timestamp;
+    //trace delay
+    updateTraceTime(timestamp);
     // wait till the player press up
     if (!ready) {
         renderer.render(stage);
@@ -122,6 +129,9 @@ function gameLoop(timestamp) {
     var oldBallY = ball.y;
     ball.x += ball.vx * deltatime;
     ball.y += ball.vy * deltatime;
+    //move trace
+    trace.x = olderBallX;
+    trace.y = olderBallY;
     // ball collision handling
     var hitResult;
     // ball-gameArea collision
@@ -216,8 +226,19 @@ function resetBall() {
     ready = false;
     bar.x = (gameArea.width - bar.width) / 2;
     bar.y = 650;
-    ball.x = bar.x + (bar.width + ball.width) / 2;
-    ball.y = bar.y - ball.height;
+    trace.x = ball.x = bar.x + (bar.width + ball.width) / 2;
+    trace.y = ball.y = bar.y - ball.height;
     ball.vx = (Math.random() < 0.5 ? 1 : -1) * ballInitSpeed;
     ball.vy = -ballInitSpeed;
+}
+var traceTimestamp;
+function updateTraceTime(timestamp) {
+    if (!traceTimestamp)
+        traceTimestamp = timestamp;
+    var traceDeltatime = (timestamp - traceTimestamp) / 1000;
+    if (traceDeltatime > 1 / 15.0) {
+        olderBallX = ball.x;
+        olderBallY = ball.y;
+        traceTimestamp = timestamp;
+    }
 }
