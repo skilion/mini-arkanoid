@@ -52,6 +52,7 @@ let leftKey, rightKey: boolean;
 let ready: boolean;
 let barMoving: boolean;
 let ballReactionTime: number; // time for which the ball change color and wobble
+let levelNum = 0;
 
 // game config
 const barSpeed = 800;
@@ -98,7 +99,7 @@ function setup() {
 	for (let i = traceLength - 1; i > 0; i--) gameArea.addChild(trace[i]);
 	gameArea.addChild(ball);
 
-	loadLevel(level1);
+	loadLevel(levelNum);
 
 	//Capture the keyboard arrow keys
 	window.addEventListener("keydown", function(event: KeyboardEvent) {
@@ -110,8 +111,6 @@ function setup() {
 		if (event.key == "ArrowLeft") leftKey = false;
 		if (event.key == "ArrowRight") rightKey = false;
 	}, false);
-
-	setAlertText("Mini Arkanoid");
 
 	// Start the game loop
 	requestAnimationFrame(gameLoop);
@@ -219,13 +218,33 @@ function gameLoop(timestamp: number) {
 		setAlertText(gameLostMsg[Math.floor(Math.random() * gameLostMsg.length)]);
 	}
 
+	// game end handling
+	let end = true;
+	for (let brick of bricks) {
+		if (brick.visible == true) {
+			end = false;
+			break;
+		}
+	}
+	if (end) {
+		levelNum++;
+		if (levelNum == levels.length) {
+			alert("You win!");
+			return;
+		}
+		loadLevel(levelNum);
+		resetBall();
+	}
+
 	updateBallAspect(deltatime);
 
 	renderer.render(stage);
 	requestAnimationFrame(gameLoop);
 }
 
-function loadLevel(level: number[]) {
+function loadLevel(num: number) {
+	setAlertText("Level " + (num + 1));
+	let level = levels[num]
 	for (let i = 0; i < bricks.length; i++) {
 		bricks[i].destroy();
 		bricksArea.removeChild(bricks[i]);
