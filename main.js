@@ -37,10 +37,12 @@ var alertTextLifetime = 0;
 // keys indicators
 var leftKey, rightKey;
 // game indicators
+var ready;
 var barMoving;
 // game config
 var barSpeed = 800;
 var ballInitSpeed = 250;
+var ballSpeedAcceleration = 10;
 var ballBarSpeedMod = 200;
 var alertTextDuration = 2;
 var alertTextFadeDuration = 1;
@@ -69,6 +71,8 @@ function setup() {
             leftKey = true;
         if (event.key == "ArrowRight")
             rightKey = true;
+        if (event.key == "ArrowUp")
+            ready = true;
     }, false);
     window.addEventListener("keyup", function (event) {
         if (event.key == "ArrowLeft")
@@ -76,7 +80,7 @@ function setup() {
         if (event.key == "ArrowRight")
             rightKey = false;
     }, false);
-    setAlertText("Hello World");
+    setAlertText("Mini Arkanoid");
     // Start the game loop
     requestAnimationFrame(gameLoop);
 }
@@ -89,6 +93,12 @@ function gameLoop(timestamp) {
     if (deltatime > 1 / 60.0)
         deltatime = 1 / 60.0;
     prevTimestamp = timestamp;
+    // wait till the player press up
+    if (!ready) {
+        renderer.render(stage);
+        requestAnimationFrame(gameLoop);
+        return;
+    }
     // move player bar
     barMoving = false;
     if (leftKey) {
@@ -154,6 +164,9 @@ function gameLoop(timestamp) {
             ball.vy = -ball.vy;
             break;
     }
+    // increase ball speed
+    if (ball.vy > 0)
+        ball.vy += ballSpeedAcceleration * deltatime;
     // alert text
     if (alertTextLifetime > 0) {
         if (alertTextLifetime <= alertTextFadeDuration) {
@@ -200,6 +213,7 @@ function setAlertText(text) {
     stage.addChild(alertText);
 }
 function resetBall() {
+    ready = false;
     bar.x = (gameArea.width - bar.width) / 2;
     bar.y = 650;
     ball.x = bar.x + (bar.width + ball.width) / 2;
