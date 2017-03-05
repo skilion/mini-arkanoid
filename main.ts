@@ -53,17 +53,21 @@ let ready: boolean;
 let barMoving: boolean;
 let ballReactionTime: number; // time for which the ball change color and wobble
 let levelNum = 0;
+let ballSpeed: number;
+let reverseTime: number;
 
 // game config
 const barSpeed = 800;
 const ballInitSpeed = 250;
-const ballSpeedAcceleration = 10;
+const ballMaxSpeed = 700;
+const ballAcceleration = 10;
 const ballBarSpeedMod = 200;
 const alertTextDuration = 2;
 const alertTextFadeDuration = 1;
 const ballReactionTimeDuration = 0.3;
 const traceLength = 10;
 const traceDelay = 0.015;
+const reverseTimeDuration = 7;
 
 function setup() {
 	// containers
@@ -153,26 +157,14 @@ function gameLoop(timestamp: number) {
 	// move ball
 	let oldBallX = ball.x;
 	let oldBallY = ball.y;
-	ball.x += ball.vx * deltatime;
-	ball.y += ball.vy * deltatime;
+	ball.x += ball.vx * ballSpeed * deltatime;
+	ball.y += ball.vy * ballSpeed * deltatime;
 
 	// ball collision handling
 	let hitResult = HitResult.none;
 	// ball-gameArea collision
 	if (ball.x < 0 || ball.x > (gameArea.width - ball.width)) hitResult = HitResult.horizontal;
 	if (ball.y < 0) hitResult = HitResult.vertical;
-	// ball-bar collision
-	let barBallHitResult = hitTest(ball, bar);
-	if (barBallHitResult != HitResult.none) {
-		hitResult = barBallHitResult;
-		playSound(SoundType.barHit);
-		// modify ball speed according to bar movement
-		if (barMoving) {
-			let speedModifier = ballBarSpeedMod * (0.25 * Math.random() + 0.25);
-			if (rightKey) ball.vx += ballBarSpeedMod;
-			else ball.vx -= ballBarSpeedMod;
-		}
-	}
 	// ball-brick collision
 	for (let brick of bricks) {
 		let brickBallHitResult = hitTest(ball, brick, -3);
@@ -182,6 +174,9 @@ function gameLoop(timestamp: number) {
 			playSound(SoundType.brickHit);
 		}
 	}
+
+	// acelerate ball
+	ballSpeed += Math.min(ballAcceleration * deltatime, ballMaxSpeed);
 
 	updateTrace(deltatime);
 
@@ -201,8 +196,7 @@ function gameLoop(timestamp: number) {
 		}
 	}
 
-	// increase ball speed
-	if (ball.vy > 0) ball.vy += ballSpeedAcceleration * deltatime;
+	checkBallBarHit();
 
 	// alert text
 	if (alertTextLifetime > 0) {
@@ -280,11 +274,13 @@ function resetBall() {
 	ready = false;
 	bar.x = (gameArea.width - bar.width) / 2;
 	bar.y = 650;
-	ball.x = bar.x + (bar.width + ball.width) / 2
+	ball.x = bar.x + (bar.width - ball.width) / 2
 	ball.y = bar.y - ball.height;
-	ball.vx = (Math.random() < 0.5 ? 1 : -1) * ballInitSpeed;
-	ball.vy = -ballInitSpeed;
+	let rad = Math.random() * Math.PI;
+	ball.vx = Math.cos(rad);
+	ball.vy = -Math.sin(rad);
 	ballReactionTime = 0;
+	ballSpeed = ballInitSpeed;
 	resetTrace();
 }
 
@@ -324,4 +320,35 @@ function resetTrace() {
 		a.x = ball.x;
 		a.y = ball.y;
 	}
+}
+
+function checkBallBarHit() {
+	let hit = hitTest(ball, bar);
+	if (hit != HitResult.none) {
+		playSound(SoundType.barHit);
+		ballHitEffect();
+		// modify ball speed according to bar movement
+		if (barMoving) {
+			let speedModifier = ballBarSpeedMod * (0.25 * Math.random() + 0.25);
+			if (rightKey) ball.vx += ballBarSpeedMod;
+			else ball.vx -= ballBarSpeedMod;
+		}
+		// modify ball direction according to hit positions
+		if ((ball.x + ball.width < bar.x) || (ball.x > bar.x + bar.width)) {
+			ball.vx = -ball.vx;
+		} else {
+			let x = (ball.x - bar.x + ball.width / 2) / bar.width * 2 - 1;
+			x = Math.max(-1, Math.min(x, 1));
+			let deg = Math.acos(x);
+			let y = Math.sin(deg);
+			ball.vx = x;
+			ball.vy = -y;
+		}
+	}
+}
+
+function reverseScreen() {
+	stage.scale.set(1, -1);
+	stage.y = screenHeight;
+	reverseTime = reverseTimeDuration;
 }
