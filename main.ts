@@ -21,9 +21,10 @@ loadAssets(setup);
 let stage, bricksArea: PIXI.Container;
 
 // sprites
-let trace, bar, bg, gameArea: PIXI.Sprite;
+let bar, bg, gameArea: PIXI.Sprite;
 let bricks: PIXI.Sprite[] = [];
 let ball: PIXI.Graphics; // the ball is a Graphic obj so the color can be changed dinamically
+let trace: PIXI.Graphics[] = [];
 
 // text messages
 let textAlertStyle = new PIXI.TextStyle({
@@ -59,12 +60,9 @@ const ballSpeedAcceleration = 10;
 const ballBarSpeedMod = 200;
 const alertTextDuration = 2;
 const alertTextFadeDuration = 1;
-const ballReactionTimeDuration = 0.5;
-
-//position of the trace
-let olderBallX;
-let olderBallY;
-
+const ballReactionTimeDuration = 0.3;
+const traceLength = 10;
+const traceDelay = 0.015;
 
 function setup() {
 	// containers
@@ -72,7 +70,6 @@ function setup() {
 	bricksArea = new PIXI.Container();
 
 	// sprites
-	trace = new PIXI.Sprite(TextureCache[assets[Assets.ball]]);
 	bar = new PIXI.Sprite(TextureCache[assets[Assets.bar]]);
 	bg = new PIXI.Sprite(TextureCache[assets[Assets.bg]]);
 	gameArea = new PIXI.Sprite(TextureCache[assets[Assets.gameArea]]);
@@ -83,6 +80,11 @@ function setup() {
 	ball.drawRect(0, 0, 25, 25);
 	ball.endFill();
 	ball.tint = 0xFF3300;
+	for (let i = 0; i < traceLength; i++) {
+		trace.push(ball.clone());
+		ball.tint = 0xFF3300;
+		trace[i].alpha = (traceLength - i) / traceLength;
+	}
 
 	// initial positions
 	gameArea.x = gameArea.y = 10;
@@ -93,8 +95,8 @@ function setup() {
 	stage.addChild(gameArea);
 	gameArea.addChild(bricksArea);
 	gameArea.addChild(bar);
+	for (let i = traceLength - 1; i > 0; i--) gameArea.addChild(trace[i]);
 	gameArea.addChild(ball);
-	gameArea.addChild(trace);
 
 	loadLevel(level1);
 
@@ -122,8 +124,6 @@ function gameLoop(timestamp: number) {
 	let deltatime = (timestamp - prevTimestamp) / 1000;
 	if (deltatime > 1 / 60.0) deltatime = 1 / 60.0;
 	prevTimestamp = timestamp;
-	//trace delay
-	updateTraceTime(timestamp);
 
 	// wait till the player press up
 	if (!ready) {
@@ -156,9 +156,6 @@ function gameLoop(timestamp: number) {
 	let oldBallY = ball.y;
 	ball.x += ball.vx * deltatime;
 	ball.y += ball.vy * deltatime;
-	//move trace
-	trace.x = olderBallX;
-	trace.y = olderBallY;
 
 	// ball collision handling
 	let hitResult = HitResult.none;
@@ -186,6 +183,9 @@ function gameLoop(timestamp: number) {
 			playSound(SoundType.brickHit);
 		}
 	}
+
+	updateTrace(deltatime);
+
 	// handle collision
 	if (hitResult != HitResult.none)  {
 		ballHitEffect();
@@ -261,34 +261,48 @@ function resetBall() {
 	ready = false;
 	bar.x = (gameArea.width - bar.width) / 2;
 	bar.y = 650;
-	trace.x = ball.x = bar.x + (bar.width + ball.width) / 2;
-	trace.y = ball.y = bar.y - ball.height;
+	ball.x = bar.x + (bar.width + ball.width) / 2
+	ball.y = bar.y - ball.height;
 	ball.vx = (Math.random() < 0.5 ? 1 : -1) * ballInitSpeed;
 	ball.vy = -ballInitSpeed;
 	ballReactionTime = 0;
+	resetTrace();
 }
 
 function updateBallAspect(deltatime: number) {
-	let effect = 1 - (Math.cos(ballReactionTime * Math.PI * 8) * 0.5 + 0.5);
-	let g = 0x33 + effect * (0xFF - 0x33);
-	let b = effect * 0xFF;
-	ball.tint = 0xFF0000 | (g << 16) | b;
-	if (ballReactionTime > 0) ballReactionTime -= deltatime;
+	if (ballReactionTime > 0) {
+		let effect = 1 - (Math.cos(ballReactionTime * Math.PI * 8) * 0.5 + 0.5);
+		//ball.scale.set(1 + (effect * 0.25));
+		let g = 0x33 + Math.round(effect * (0xFF - 0x33));
+		let b = Math.round(effect * 0xFF);
+		ball.tint = 0xFF0000 | (g << 8) | b;
+		ballReactionTime -= deltatime;
+	}
 }
 
 function ballHitEffect() {
 	ballReactionTime = ballReactionTimeDuration;
 }
 
-let traceTimestamp: number;
-function updateTraceTime(timestamp)
-{
-	if (!traceTimestamp) traceTimestamp = timestamp;
-	let traceDeltatime = (timestamp - traceTimestamp) / 1000;
-	if (traceDeltatime > 1 / 15.0)
-	{
-		olderBallX = ball.x;
-		olderBallY = ball.y;
-		traceTimestamp = timestamp;
+let traceTime = 0;
+function updateTrace(deltatime: number) {
+	traceTime -= deltatime;
+	if (traceTime <= 0) {
+		for (let i = traceLength - 1; i > 0; i--) {
+			trace[i].x = trace[i - 1].x;
+			trace[i].y = trace[i - 1].y;
+			trace[i].tint = trace[i - 1].tint;
+		}
+		trace[0].x = ball.x;
+		trace[0].y = ball.y;
+		trace[0].tint = ball.tint;
+		traceTime = traceDelay;
+	}
+}
+
+function resetTrace() {
+	for (let a of trace) {
+		a.x = ball.x;
+		a.y = ball.y;
 	}
 }

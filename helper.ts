@@ -9,7 +9,7 @@ enum HitResult {
 }
 
 // margin = nubmer of pixels to not take in consideration
-function hitTest(a: PIXI.Sprite, b: PIXI.Sprite, margin = 0): HitResult {
+function hitTest(a: PIXI.Container, b: PIXI.Container, margin = 0): HitResult {
     if (a.visible == false || b.visible == false) return HitResult.none;
 
     let axMax = a.x + a.width;
